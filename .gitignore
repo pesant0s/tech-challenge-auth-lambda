@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv*/
+venv/
+
+# Testes
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Pacote gerado pelo build
+dist/
+build/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+!*.tfvars.example
+*.tfplan
+
+# Segredos
+.env
+*.pem
+
+# SO e editores
+.DS_Store
+.idea/
+.vscode/
