@@ -1,0 +1,113 @@
+name: CI/CD
+
+# Testes e empacotamento sempre; publicação só com AMBIENTE_ATIVO=true (ADR-013, no tech-challenge-infra-k8s).
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  AWS_REGION: us-east-1
+  TF_VERSION: "1.10.5"
+
+permissions:
+  contents: read
+
+jobs:
+  testes:
+    name: Testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: pytest --cov=src --cov-report=term-missing -q
+
+  empacotar:
+    name: Empacotar e validar o zip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: make build
+
+      # A Lambda importa a partir da raiz do zip: pega dependência ou metadado faltando antes do deploy.
+      - name: Verificar que o pacote é importável
+        run: |
+          unzip -qo dist/lambda.zip -d /tmp/verifica
+          cd /tmp/verifica
+          python -c "
+          import json, handler
+          r = handler.handler({'body': json.dumps({'cpf': '11111111111'})}, None)
+          assert r['statusCode'] == 400, r
+          "
+
+  ambiente-desligado:
+    name: Publicação não executada
+    needs: [testes, empacotar]
+    if: github.ref_name == 'main' && github.event_name != 'pull_request' && vars.AMBIENTE_ATIVO != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "### Publicação pulada — AMBIENTE_ATIVO não está true, o ambiente AWS está desligado." >> "$GITHUB_STEP_SUMMARY"
+
+  publicar:
+    name: Publicar na AWS
+    needs: [testes, empacotar]
+    if: github.ref_name == 'main' && github.event_name != 'pull_request' && vars.AMBIENTE_ATIVO == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    environment: producao
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Autenticar na AWS via OIDC
+        id: aws
+        continue-on-error: true
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Explicar falha de autenticação
+        if: steps.aws.outcome == 'failure'
+        run: |
+          echo "::error::AMBIENTE_ATIVO=true, mas a role não pôde ser assumida: o ambiente foi destruído sem 'make down' ou falta o secret AWS_ROLE_ARN."
+          exit 1
+
+      - run: make build
+
+      - name: Terraform apply
+        working-directory: infra
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=tech-challenge-tfstate-$(aws sts get-caller-identity --query Account --output text)" \
+            -backend-config="region=$AWS_REGION"
+          terraform apply -input=false -auto-approve
+
+      # Um CPF sabidamente inválido tem que voltar 400; um 5xx indica problema de VPC, segredo ou pacote.
+      - name: Teste de fumaça
+        run: |
+          ENDPOINT=$(aws ssm get-parameter --name /tech-challenge/apigateway/endpoint --query Parameter.Value --output text)
+          STATUS=$(curl -s -o /tmp/resposta.json -w "%{http_code}" -X POST "$ENDPOINT/auth/cpf" \
+            -H 'content-type: application/json' -d '{"cpf":"11111111111"}')
+          cat /tmp/resposta.json
+          test "$STATUS" = "400"
