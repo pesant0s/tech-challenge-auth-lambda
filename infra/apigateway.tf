@@ -8,11 +8,10 @@ resource "aws_apigatewayv2_integration" "auth" {
   timeout_milliseconds   = 15000
 }
 
+# Só POST: CPF em query string ficaria em histórico de navegador e em log de proxy.
 resource "aws_apigatewayv2_route" "auth" {
-  for_each = toset(["POST /auth/cpf", "GET /auth/cpf"])
-
   api_id    = data.aws_ssm_parameter.apigateway_id.value
-  route_key = each.value
+  route_key = "POST /auth/cpf"
   target    = "integrations/${aws_apigatewayv2_integration.auth.id}"
 }
 
