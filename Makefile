@@ -50,16 +50,16 @@ init: conta ## Inicializa o Terraform com o estado desta conta
 	cd infra && terraform init -backend-config="bucket=$(BUCKET)" -backend-config="region=$(AWS_REGION)"
 
 plan: conta build ## Mostra o que será alterado
-	@test -d infra/.terraform || $(MAKE) --no-print-directory init
+	@test -f infra/.terraform/terraform.tfstate || $(MAKE) --no-print-directory init
 	cd infra && terraform plan
 
 apply: conta gateway build ## Publica a função e a rota no API Gateway
-	@test -d infra/.terraform || $(MAKE) --no-print-directory init
+	@test -f infra/.terraform/terraform.tfstate || $(MAKE) --no-print-directory init
 	cd infra && terraform apply
 
 # O destroy também empacota: o Terraform lê o hash do zip mesmo para destruir.
 destroy: conta build ## Remove a função e a rota
-	@test -d infra/.terraform || $(MAKE) --no-print-directory init
+	@test -f infra/.terraform/terraform.tfstate || $(MAKE) --no-print-directory init
 	cd infra && terraform destroy
 
 implantar: ## Aciona o pipeline de publicação na main
