@@ -25,6 +25,27 @@ Function serverless que autentica o cliente da oficina pelo **CPF/CNPJ** e emite
 
 ---
 
+## Documentação
+
+| Documento | Onde está |
+|---|---|
+| Diagrama de componentes | `tech-challenge-infra-k8s` · README, seção *Arquitetura* |
+| Sequência da autenticação por CPF | `tech-challenge-infra-k8s` · README, *Fluxo de uma requisição autenticada* |
+| Sequência da abertura de ordem de serviço | `tech-challenge-app` · README, *Abertura de uma ordem de serviço* |
+| Modelo de dados: ER, relacionamentos e ajustes | `tech-challenge-app` · `docs/modelo-de-dados.md` |
+| RFC-001 · Escolha da nuvem | `tech-challenge-infra-k8s` · `docs/rfc/RFC-001-nuvem.md` |
+| RFC-002 · Escolha do banco de dados | `tech-challenge-infra-db` · `docs/rfc/RFC-002-banco-de-dados.md` |
+| RFC-003 · Estratégia de autenticação | `tech-challenge-auth-lambda` · `docs/rfc/RFC-003-autenticacao.md` |
+| ADR-001 a 004 · rede e banco | `tech-challenge-infra-db` · README |
+| ADR-005 a 008, 013 e 014 · cluster, CI e observabilidade | `tech-challenge-infra-k8s` · README |
+| ADR-009 a 012 · autenticação | `tech-challenge-auth-lambda` · README |
+| Swagger | `<url_api>/docs` na AWS · `http://localhost:8000/docs` localmente |
+| Coleção Postman | `tech-challenge-app` · `postman/oficina.postman_collection.json` |
+| Ambientes e deploy ativo | só produção, com a dispensa de homologação registrada no README do `tech-challenge-app`; o ambiente AWS é efêmero (ADR-013), e a URL da API sai em `make output`, no `tech-challenge-infra-k8s`, durante uma sessão |
+
+
+---
+
 ## O que a função faz
 
 Exatamente os três passos que o desafio descreve:
@@ -103,8 +124,8 @@ curl -X POST "$ENDPOINT/auth/cpf" \
 }
 ```
 
-O CPF pode vir com ou sem pontuação, no corpo ou na query string (`?cpf=...`), que facilita a
-demonstração pelo navegador.
+O CPF pode vir com ou sem pontuação e vai sempre no corpo: em query string, ficaria gravado em
+histórico de navegador e em log de proxy.
 
 ### Usar o token
 
@@ -150,6 +171,9 @@ um cliente enxerga apenas as próprias ordens de serviço; um atendente opera a 
 ---
 
 ## Decisões técnicas
+
+A estratégia de autenticação, comparada com Cognito, authorizer no gateway e login dentro da
+API, está na [RFC-003](docs/rfc/RFC-003-autenticacao.md).
 
 ### ADR-009 · pg8000 em vez de psycopg2
 
