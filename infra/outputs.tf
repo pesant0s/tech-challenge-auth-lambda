@@ -3,7 +3,7 @@ output "nome_funcao" {
 }
 
 output "url_autenticacao" {
-  value = "${data.aws_ssm_parameter.apigateway_endpoint.value}/auth/cpf"
+  value = "${data.aws_ssm_parameter.apigateway_endpoint.insecure_value}/auth/cpf"
 }
 
 output "grupo_de_logs" {
