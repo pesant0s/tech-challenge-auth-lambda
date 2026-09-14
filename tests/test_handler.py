@@ -25,10 +25,9 @@ def banco(monkeypatch):
     return estado
 
 
-def chamar(corpo=None, query=None, bruto=None):
+def chamar(corpo=None, bruto=None):
     evento = {
         "body": bruto if bruto is not None else (json.dumps(corpo) if corpo is not None else None),
-        "queryStringParameters": query,
         "isBase64Encoded": False,
     }
     resposta = modulo.handler(evento, type("Contexto", (), {"aws_request_id": "req-1"})())
@@ -45,10 +44,6 @@ def test_cliente_ativo_recebe_token(banco):
 def test_cpf_pontuado_e_normalizado_antes_da_consulta(banco):
     assert chamar({"cpf": "529.982.247-25"})[0] == 200
     assert banco["consultado"] == CPF
-
-
-def test_aceita_cpf_na_query_string(banco):
-    assert chamar(query={"cpf": CPF})[0] == 200
 
 
 def test_cpf_invalido_nao_chega_ao_banco(banco):

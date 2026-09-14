@@ -56,7 +56,7 @@ def handler(evento, contexto):
         corpo = evento.get("body") or ""
         if evento.get("isBase64Encoded"):
             corpo = base64.b64decode(corpo).decode()
-        valor = json.loads(corpo).get("cpf") if corpo else (evento.get("queryStringParameters") or {}).get("cpf")
+        valor = json.loads(corpo).get("cpf") if corpo else None
         documento = normalizar(valor)
     except (ValueError, AttributeError) as erro:
         detalhe = str(erro) if isinstance(erro, DocumentoInvalido) else 'Envie {"cpf": "..."} no corpo'
