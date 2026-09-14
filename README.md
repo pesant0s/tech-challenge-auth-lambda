@@ -294,9 +294,11 @@ A `main` é protegida: apenas Pull Request aprovado.
 
 ## Observabilidade
 
-Logs em **JSON estruturado**, no mesmo formato da API, para que os dois apareçam
-correlacionados no New Relic. O `request_id` da Lambda é o elo com o access log do
-API Gateway.
+Logs em **JSON estruturado**, no mesmo formato da API, gravados no CloudWatch Logs
+(`make logs`). O `request_id` da Lambda é o elo com o access log do API Gateway.
+
+No New Relic, a função aparece pelas métricas (invocações, erros e duração), coletadas
+pela integração com a AWS que o `tech-challenge-infra-k8s` cria junto com os dashboards.
 
 ```json
 {"timestamp":"2026-09-09T13:54:00Z","level":"INFO","logger":"auth",
